@@ -1,0 +1,434 @@
+﻿/*
+
+
+
+This file contains advanced configuration for SMAPI. You generally shouldn't change this file.
+
+
+
+*/
+{
+  /**
+   * Whether to enable features intended for mod developers. Currently this only makes TRACE-level
+   * messages appear in the console.
+   */
+  "DeveloperMode": true,
+
+  /**
+   * Whether SMAPI should check for a newer version when you load the game. If a new version is
+   * available, a small message will appear in the console. This doesn't affect the load time even
+   * if your connection is offline or slow, because it happens in the background.
+   */
+  "CheckForUpdates": true,
+
+  /**
+   * Whether SMAPI should log more information about the game context.
+   */
+  "VerboseLogging": false,
+
+  /**
+   * A list of mods SMAPI should consider obsolete and not load. Changing this field is not
+   * recommended and may destabilise your game.
+   */
+  "DisabledMods": [
+    {
+      "Name": "Modder Serialization Utility",
+      "ID": [ "SerializerUtils-0-1" ],
+      "ReasonPhrase": "it's no longer used by any mods, and is no longer maintained."
+    },
+    {
+      "Name": "StarDustCore",
+      "ID": [ "StarDustCore" ],
+      "ReasonPhrase": "it was only used by earlier versions of Save Anywhere (which no longer uses it), and is no longer maintained."
+    }
+  ],
+
+  /**
+   * A list of mod versions SMAPI should consider compatible or broken regardless of whether it
+   * detects incompatible code. Each record can be set to `AssumeCompatible` or `AssumeBroken`.
+   * Changing this field is not recommended and may destabilise your game.
+   */
+  "ModCompatibility": [
+    {
+      "Name": "AccessChestAnywhere",
+      "ID": [ "AccessChestAnywhere" ],
+      "UpperVersion": "1.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/257",
+      "UnofficialUpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/518",
+      "Notes": "Needs update for SDV 1.1."
+    },
+    {
+      "Name": "Almighty Tool",
+      "ID": [ "AlmightyTool.dll" ],
+      "UpperVersion": "1.1.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/439",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Better Sprinklers",
+      "ID": [ "SPDSprinklersMod", /*since 2.3*/ "Speeder.BetterSprinklers" ],
+      "UpperVersion": "2.3.1-pathoschild-update",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/41",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2 and to migrate broken TimeEvents.AfterDayOfMonthChanged."
+    },
+    {
+      "Name": "Birthday Mail",
+      "ID": [ "005e02dc-d900-425c-9c68-1ff55c5a295d" ],
+      "UpperVersion": "1.2.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/276",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Chest Label System",
+      "ID": [ "SPDChestLabel" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/242",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.1."
+    },
+    {
+      "Name": "Chest Pooling",
+      "ID": [ "ChestPooling.dll" ],
+      "UpperVersion": "1.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/threads/111988",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Chests Anywhere",
+      "ID": [ "ChestsAnywhere", /*since 1.9*/ "Pathoschild.ChestsAnywhere" ],
+      "UpperVersion": "1.9-beta",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/518",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "CJB Automation",
+      "ID": [ "CJBAutomation" ],
+      "UpperVersion": "1.4",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/211",
+      "UnofficialUpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/1063",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "CJB Cheats Menu",
+      "ID": [ "CJBCheatsMenu" ],
+      "UpperVersion": "1.12",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/4",
+      "Notes": "Needs update for SDV 1.1."
+    },
+    {
+      "Name": "CJB Item Spawner",
+      "ID": [ "CJBItemSpawner" ],
+      "UpperVersion": "1.5",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/93",
+      "Notes": "Needs update for SDV 1.1."
+    },
+    {
+      "Name": "CJB Show Item Sell Price",
+      "ID": [ "CJBShowItemSellPrice" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/93",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Cooking Skill",
+      "ID": [ "CookingSkill" ],
+      "UpperVersion": "1.0.3",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/522",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Cooking Skill Prestige Adapter",
+      "ID": [ "20d6b8a3-b6e7-460b-a6e4-07c2b0cb6c63" ],
+      "UpperVersion": "1.0.4",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/569",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Enemy Health Bars",
+      "ID": [ "SPDHealthBar" ],
+      "UpperVersion": "1.7",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/193",
+      "UnofficialUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Entoarox Framework",
+      "ID": [ "eacdb74b-4080-4452-b16b-93773cda5cf9", /*since ???*/ "Entoarox.EntoaroxFramework" ],
+      "UpperVersion": "1.7.5",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/resources/4228",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Extended Fridge",
+      "ID": [ "Mystra007ExtendedFridge" ],
+      "UpperVersion": "1.0",
+      "UpperVersionLabel": "0.94",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/485",
+      "Notes": "Needs update for SDV 1.2. Actual upper version is 0.94, but mod incorrectly sets it to 1.0 in the manifest."
+    },
+    {
+      "Name": "FarmAutomation.ItemCollector",
+      "ID": [ "FarmAutomation.ItemCollector.dll", /*since 0.4*/ "Maddy99.FarmAutomation.ItemCollector" ],
+      "UpperVersion": "0.4",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/threads/125172",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Instant Geode",
+      "ID": [ "InstantGeode" ],
+      "UpperVersion": "1.12",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/threads/109038",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Gate Opener",
+      "ID": [ "GateOpener.dll", /*since 1.1*/ "mralbobo.GateOpener" ],
+      "UpperVersion": "1.0.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/threads/111988",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Get Dressed",
+      "ID": [ "GetDressed.dll", /*since 3.3*/ "Advize.GetDressed" ],
+      "UpperVersion": "3.3",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/331",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Gift Taste Helper",
+      "ID": [ "8008db57-fa67-4730-978e-34b37ef191d6" ],
+      "UpperVersion": "2.3.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/229",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Lookup Anything",
+      "ID": [ "LookupAnything", /*since 1.10.1*/ "Pathoschild.LookupAnything" ],
+      "UpperVersion": "1.10.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/541",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Makeshift Multiplayer",
+      "ID": [ "StardewValleyMP", /*since 0.3*/ "spacechase0.StardewValleyMP" ],
+      "Compatibility": "AssumeBroken",
+      "UpperVersion": "0.3.3",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/501",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "NoSoilDecay",
+      "ID": [ "289dee03-5f38-4d8e-8ffc-e440198e8610" ],
+      "UpperVersion": "0.5",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/237",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2, and uses Assembly.GetExecutingAssembly().Location."
+    },
+    {
+      "Name": "NPC Map Locations",
+      "ID": [ "NPCMapLocationsMod" ],
+      "LowerVersion": "1.42",
+      "UpperVersion": "1.43",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/239",
+      "ReasonPhrase": "These versions have an update check error which crash the game."
+    },
+    {
+      "Name": "Part of the Community",
+      "ID": [ "SB_PotC" ],
+      "UpperVersion": "1.0.8",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/923",
+      "ReasonPhrase": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Point-and-Plant",
+      "ID": [ "PointAndPlant.dll" ],
+      "UpperVersion": "1.0.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/572",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "PrairieKingMadeEasy",
+      "ID": [ "PrairieKingMadeEasy.dll" ],
+      "UpperVersion": "1.0.0",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/resources/3594",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Rush Orders",
+      "ID": [ "RushOrders", /*since 1.1*/ "spacechase0.RushOrders" ],
+      "UpperVersion": "1.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/605",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Save Anywhere",
+      "ID": [ "SaveAnywhere" ],
+      "UpperVersion": "2.3",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/444",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Simple Sprinklers",
+      "ID": [ "SimpleSprinkler.dll" ],
+      "UpperVersion": "1.4",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/76",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Sprint and Dash",
+      "ID": [ "SPDSprintAndDash" ],
+      "UpperVersion": "1.0",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/resources/3531",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/resources/4201",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Sprint and Dash Redux",
+      "ID": [ "SPDSprintAndDash" ],
+      "UpperVersion": "1.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/resources/4201",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "StackSplitX",
+      "ID": [ "StackSplitX.dll" ],
+      "UpperVersion": "1.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/798",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Teleporter",
+      "ID": [ "Teleporter" ],
+      "UpperVersion": "1.0.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/resources/4374",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "TimeSpeed",
+      "ID": [ "TimeSpeed.dll", /* since 2.0.3 */ "4108e859-333c-4fec-a1a7-d2e18c1019fe", /*since 2.1*/ "community.TimeSpeed" ],
+      "UpperVersion": "2.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/169",
+      "Notes": "Needs update for SDV 1.2 and to migrate broken TimeEvents.AfterDayOfMonthChanged."
+    },
+    {
+      "Name": "UiModSuite",
+      "ID": [ "Demiacle.UiModSuite" ],
+      "UpperVersion": "0.5",
+      "UpperVersionLabel": "1.0",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://www.nexusmods.com/stardewvalley/mods/1023",
+      "Notes": "Needs update for SDV 1.2. Actual upper version is 1.0, but mod incorrectly sets it to 0.5 in the manifest."
+    },
+    {
+      "Name": "Weather Controller",
+      "ID": [ "WeatherController.dll" ],
+      "UpperVersion": "1.0.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/threads/111526",
+      "UnofficialUpdateUrl": "http://community.playstarbound.com/threads/132096",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "zDailyIncrease",
+      "ID": [ "zdailyincrease" ],
+      "UpperVersion": "1.2",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/resources/4247",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoom Out Extreme",
+      "ID": [ "ZoomMod" ],
+      "UpperVersion": "0.1",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "http://community.playstarbound.com/threads/115028",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoryn's Better RNG",
+      "ID": [ "76b6d1e1-f7ba-4d72-8c32-5a1e6d2716f6", /*since 1.6*/ "Zoryn.BetterRNG" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "https://github.com/Zoryn4163/SMAPI-Mods/releases",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoryn's Calendar Anywhere",
+      "ID": [ "a41c01cd-0437-43eb-944f-78cb5a53002a", /*since 1.6*/ "Zoryn.CalendarAnywhere" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "https://github.com/Zoryn4163/SMAPI-Mods/releases",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoryn's Health Bars",
+      "ID": [ "HealthBars.dll", /*since 1.6*/ "Zoryn.HealthBars" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "https://github.com/Zoryn4163/SMAPI-Mods/releases",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoryn's Junimo Deposit Anywhere",
+      "ID": [ "f93a4fe8-cade-4146-9335-b5f82fbbf7bc", /*since 1.6*/ "Zoryn.JunimoDepositAnywhere" ],
+      "UpperVersion": "1.7",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "https://github.com/Zoryn4163/SMAPI-Mods/releases",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoryn's Movement Mod",
+      "ID": [ "8a632929-8335-484f-87dd-c29d2ba3215d", /*since 1.6*/ "Zoryn.MovementModifier" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "https://github.com/Zoryn4163/SMAPI-Mods/releases",
+      "Notes": "Needs update for SDV 1.2."
+    },
+    {
+      "Name": "Zoryn's Regen Mod",
+      "ID": [ "dfac4383-1b6b-4f33-ae4e-37fc23e5252e", /*since 1.6*/ "Zoryn.RegenMod" ],
+      "UpperVersion": "1.6",
+      "Compatibility": "AssumeBroken",
+      "UpdateUrl": "https://github.com/Zoryn4163/SMAPI-Mods/releases",
+      "Notes": "Needs update for SDV 1.2."
+    }
+  ]
+}
