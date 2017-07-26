@@ -10,6 +10,8 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI.Events;
+using StardewModdingAPI.Framework.Reflection;
+using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.BellsAndWhistles;
 using StardewValley.Locations;
@@ -59,11 +61,14 @@ namespace StardewModdingAPI.Framework
         /****
         ** Game state
         ****/
-        /// <summary>Arrays of pressed controller buttons indexed by <see cref="PlayerIndex"/>.</summary>
-        private Buttons[] PreviousPressedButtons = new Buttons[0];
+        /// <summary>A record of the buttons pressed as of the previous tick.</summary>
+        private SButton[] PreviousPressedButtons = new SButton[0];
 
         /// <summary>A record of the keyboard state (i.e. the up/down state for each button) as of the previous tick.</summary>
         private KeyboardState PreviousKeyState;
+
+        /// <summary>A record of the controller state (i.e. the up/down state for each button) as of the previous tick.</summary>
+        private GamePadState PreviousControllerState;
 
         /// <summary>A record of the mouse state (i.e. the cursor position, scroll amount, and the up/down state for each button) as of the previous tick.</summary>
         private MouseState PreviousMouseState;
@@ -113,7 +118,7 @@ namespace StardewModdingAPI.Framework
         /// <summary>The time of day (in 24-hour military format) at last check.</summary>
         private int PreviousTime;
 
-#if !SMAPI_2_0
+#if SMAPI_1_x
         /// <summary>The day of month (1–28) at last check.</summary>
         private int PreviousDay;
 
@@ -146,7 +151,7 @@ namespace StardewModdingAPI.Framework
         ** Private wrappers
         ****/
         /// <summary>Simplifies access to private game code.</summary>
-        private static IReflectionHelper Reflection;
+        private static Reflector Reflection;
 
         // ReSharper disable ArrangeStaticMemberQualifier, ArrangeThisQualifier, InconsistentNaming
         /// <summary>Used to access private fields and methods.</summary>
@@ -180,7 +185,7 @@ namespace StardewModdingAPI.Framework
         /// <summary>Construct an instance.</summary>
         /// <param name="monitor">Encapsulates monitoring and logging.</param>
         /// <param name="reflection">Simplifies access to private game code.</param>
-        internal SGame(IMonitor monitor, IReflectionHelper reflection)
+        internal SGame(IMonitor monitor, Reflector reflection)
         {
             // initialise
             this.Monitor = monitor;
@@ -287,7 +292,7 @@ namespace StardewModdingAPI.Framework
                 if (this.FirstUpdate)
                 {
                     GameEvents.InvokeInitialize(this.Monitor);
-#if !SMAPI_2_0
+#if SMAPI_1_x
                     GameEvents.InvokeLoadContent(this.Monitor);
 #endif
                     GameEvents.InvokeGameLoaded(this.Monitor);
@@ -319,7 +324,7 @@ namespace StardewModdingAPI.Framework
                         Context.IsWorldReady = true;
 
                         SaveEvents.InvokeAfterLoad(this.Monitor);
-#if !SMAPI_2_0
+#if SMAPI_1_x
                         PlayerEvents.InvokeLoadedGame(this.Monitor, new EventArgsLoadedGameChanged(Game1.hasLoadedGame));
 #endif
                         TimeEvents.InvokeAfterDayStarted(this.Monitor);
@@ -351,64 +356,95 @@ namespace StardewModdingAPI.Framework
                 {
                     // get latest state
                     KeyboardState keyState;
+                    GamePadState controllerState;
                     MouseState mouseState;
                     Point mousePosition;
                     try
                     {
                         keyState = Keyboard.GetState();
+                        controllerState = GamePad.GetState(PlayerIndex.One);
                         mouseState = Mouse.GetState();
                         mousePosition = new Point(Game1.getMouseX(), Game1.getMouseY());
                     }
                     catch (InvalidOperationException) // GetState() may crash for some players if window doesn't have focus but game1.IsActive == true
                     {
                         keyState = this.PreviousKeyState;
+                        controllerState = this.PreviousControllerState;
                         mouseState = this.PreviousMouseState;
                         mousePosition = this.PreviousMousePosition;
                     }
 
                     // analyse state
-                    Keys[] currentlyPressedKeys = keyState.GetPressedKeys();
-                    Keys[] previousPressedKeys = this.PreviousKeyState.GetPressedKeys();
-                    Keys[] framePressedKeys = currentlyPressedKeys.Except(previousPressedKeys).ToArray();
-                    Keys[] frameReleasedKeys = previousPressedKeys.Except(currentlyPressedKeys).ToArray();
+                    SButton[] currentlyPressedKeys = this.GetPressedButtons(keyState, mouseState, controllerState).ToArray();
+                    SButton[] previousPressedKeys = this.PreviousPressedButtons;
+                    SButton[] framePressedKeys = currentlyPressedKeys.Except(previousPressedKeys).ToArray();
+                    SButton[] frameReleasedKeys = previousPressedKeys.Except(currentlyPressedKeys).ToArray();
+                    bool isClick = framePressedKeys.Contains(SButton.MouseLeft) || (framePressedKeys.Contains(SButton.ControllerA) && !currentlyPressedKeys.Contains(SButton.ControllerX));
 
-                    // raise key pressed
-                    foreach (Keys key in framePressedKeys)
-                        ControlEvents.InvokeKeyPressed(this.Monitor, key);
-
-                    // raise key released
-                    foreach (Keys key in frameReleasedKeys)
-                        ControlEvents.InvokeKeyReleased(this.Monitor, key);
-
-                    // raise controller button pressed
-                    foreach (Buttons button in this.GetFramePressedButtons())
+                    // get cursor position
+#if !SMAPI_1_x
+                    ICursorPosition cursor;
                     {
-                        if (button == Buttons.LeftTrigger || button == Buttons.RightTrigger)
+                        // cursor position
+                        Vector2 screenPixels = new Vector2(Game1.getMouseX(), Game1.getMouseY());
+                        Vector2 tile = new Vector2((Game1.viewport.X + screenPixels.X) / Game1.tileSize, (Game1.viewport.Y + screenPixels.Y) / Game1.tileSize);
+                        Vector2 grabTile = (Game1.mouseCursorTransparency > 0 && Utility.tileWithinRadiusOfPlayer((int)tile.X, (int)tile.Y, 1, Game1.player)) // derived from Game1.pressActionButton
+                            ? tile
+                            : Game1.player.GetGrabTile();
+                        cursor = new CursorPosition(screenPixels, tile, grabTile);
+                    }
+#endif
+
+                    // raise button pressed
+                    foreach (SButton button in framePressedKeys)
+                    {
+#if !SMAPI_1_x
+                        InputEvents.InvokeButtonPressed(this.Monitor, button, cursor, isClick);
+#endif
+
+                        // legacy events
+                        if (button.TryGetKeyboard(out Keys key))
                         {
-                            var triggers = GamePad.GetState(PlayerIndex.One).Triggers;
-                            ControlEvents.InvokeTriggerPressed(this.Monitor, button, button == Buttons.LeftTrigger ? triggers.Left : triggers.Right);
+                            if (key != Keys.None)
+                                ControlEvents.InvokeKeyPressed(this.Monitor, key);
                         }
-                        else
-                            ControlEvents.InvokeButtonPressed(this.Monitor, button);
+                        else if (button.TryGetController(out Buttons controllerButton))
+                        {
+                            if (controllerButton == Buttons.LeftTrigger || controllerButton == Buttons.RightTrigger)
+                                ControlEvents.InvokeTriggerPressed(this.Monitor, controllerButton, controllerButton == Buttons.LeftTrigger ? controllerState.Triggers.Left : controllerState.Triggers.Right);
+                            else
+                                ControlEvents.InvokeButtonPressed(this.Monitor, controllerButton);
+                        }
                     }
 
-                    // raise controller button released
-                    foreach (Buttons button in this.GetFrameReleasedButtons())
+                    // raise button released
+                    foreach (SButton button in frameReleasedKeys)
                     {
-                        if (button == Buttons.LeftTrigger || button == Buttons.RightTrigger)
+#if !SMAPI_1_x
+                        bool wasClick =
+                            (button == SButton.MouseLeft && previousPressedKeys.Contains(SButton.MouseLeft)) // released left click
+                            || (button == SButton.ControllerA && previousPressedKeys.Contains(SButton.ControllerA) && !previousPressedKeys.Contains(SButton.ControllerX));
+                        InputEvents.InvokeButtonReleased(this.Monitor, button, cursor, wasClick);
+#endif
+
+                        // legacy events
+                        if (button.TryGetKeyboard(out Keys key))
                         {
-                            var triggers = GamePad.GetState(PlayerIndex.One).Triggers;
-                            ControlEvents.InvokeTriggerReleased(this.Monitor, button, button == Buttons.LeftTrigger ? triggers.Left : triggers.Right);
+                            if (key != Keys.None)
+                                ControlEvents.InvokeKeyReleased(this.Monitor, key);
                         }
-                        else
-                            ControlEvents.InvokeButtonReleased(this.Monitor, button);
+                        else if (button.TryGetController(out Buttons controllerButton))
+                        {
+                            if (controllerButton == Buttons.LeftTrigger || controllerButton == Buttons.RightTrigger)
+                                ControlEvents.InvokeTriggerReleased(this.Monitor, controllerButton, controllerButton == Buttons.LeftTrigger ? controllerState.Triggers.Left : controllerState.Triggers.Right);
+                            else
+                                ControlEvents.InvokeButtonReleased(this.Monitor, controllerButton);
+                        }
                     }
 
-                    // raise keyboard state changed
+                    // raise legacy state-changed events
                     if (keyState != this.PreviousKeyState)
                         ControlEvents.InvokeKeyboardChanged(this.Monitor, this.PreviousKeyState, keyState);
-
-                    // raise mouse state changed
                     if (mouseState != this.PreviousMouseState)
                         ControlEvents.InvokeMouseChanged(this.Monitor, this.PreviousMouseState, mouseState, this.PreviousMousePosition, mousePosition);
 
@@ -416,7 +452,8 @@ namespace StardewModdingAPI.Framework
                     this.PreviousMouseState = mouseState;
                     this.PreviousMousePosition = mousePosition;
                     this.PreviousKeyState = keyState;
-                    this.PreviousPressedButtons = this.GetButtonsDown();
+                    this.PreviousControllerState = controllerState;
+                    this.PreviousPressedButtons = currentlyPressedKeys;
                 }
 
                 /*********
@@ -466,7 +503,7 @@ namespace StardewModdingAPI.Framework
                     if (this.GetHash(Game1.locations) != this.PreviousGameLocations)
                         LocationEvents.InvokeLocationsChanged(this.Monitor, Game1.locations);
 
-#if !SMAPI_2_0
+#if SMAPI_1_x
                     // raise player changed
                     if (Game1.player != this.PreviousFarmer)
                         PlayerEvents.InvokeFarmerChanged(this.Monitor, this.PreviousFarmer, Game1.player);
@@ -501,7 +538,7 @@ namespace StardewModdingAPI.Framework
                         // raise time changed
                         if (Game1.timeOfDay != this.PreviousTime)
                             TimeEvents.InvokeTimeOfDayChanged(this.Monitor, this.PreviousTime, Game1.timeOfDay);
-#if !SMAPI_2_0
+#if SMAPI_1_x
                         if (Game1.dayOfMonth != this.PreviousDay)
                             TimeEvents.InvokeDayOfMonthChanged(this.Monitor, this.PreviousDay, Game1.dayOfMonth);
                         if (Game1.currentSeason != this.PreviousSeason)
@@ -529,7 +566,7 @@ namespace StardewModdingAPI.Framework
                     this.PreviousTime = Game1.timeOfDay;
                     this.PreviousMineLevel = Game1.mine?.mineLevel ?? 0;
                     this.PreviousSaveID = Game1.uniqueIDForThisGame;
-#if !SMAPI_2_0
+#if SMAPI_1_x
                     this.PreviousFarmer = Game1.player;
                     this.PreviousDay = Game1.dayOfMonth;
                     this.PreviousSeason = Game1.currentSeason;
@@ -540,7 +577,7 @@ namespace StardewModdingAPI.Framework
                 /*********
                 ** Game day transition event (obsolete)
                 *********/
-#if !SMAPI_2_0
+#if SMAPI_1_x
                 if (Game1.newDay != this.PreviousIsNewDay)
                 {
                     TimeEvents.InvokeOnNewDay(this.Monitor, this.PreviousDay, Game1.dayOfMonth, Game1.newDay);
@@ -566,7 +603,7 @@ namespace StardewModdingAPI.Framework
                 GameEvents.InvokeUpdateTick(this.Monitor);
                 if (this.FirstUpdate)
                 {
-#if !SMAPI_2_0
+#if SMAPI_1_x
                     GameEvents.InvokeFirstUpdateTick(this.Monitor);
 #endif
                     this.FirstUpdate = false;
@@ -1308,120 +1345,66 @@ namespace StardewModdingAPI.Framework
             this.PreviousSaveID = 0;
         }
 
-        /// <summary>Get the controller buttons which are currently pressed.</summary>
-        private Buttons[] GetButtonsDown()
+        /// <summary>Get the buttons pressed in the given stats.</summary>
+        /// <param name="keyboard">The keyboard state.</param>
+        /// <param name="mouse">The mouse state.</param>
+        /// <param name="controller">The controller state.</param>
+        private IEnumerable<SButton> GetPressedButtons(KeyboardState keyboard, MouseState mouse, GamePadState controller)
         {
-            var state = GamePad.GetState(PlayerIndex.One);
-            var buttons = new List<Buttons>();
-            if (state.IsConnected)
+            // keyboard
+            foreach (Keys key in keyboard.GetPressedKeys())
+                yield return key.ToSButton();
+
+            // mouse
+            if (mouse.LeftButton == ButtonState.Pressed)
+                yield return SButton.MouseLeft;
+            if (mouse.RightButton == ButtonState.Pressed)
+                yield return SButton.MouseRight;
+            if (mouse.MiddleButton == ButtonState.Pressed)
+                yield return SButton.MouseMiddle;
+            if (mouse.XButton1 == ButtonState.Pressed)
+                yield return SButton.MouseX1;
+            if (mouse.XButton2 == ButtonState.Pressed)
+                yield return SButton.MouseX2;
+
+            // controller
+            if (controller.IsConnected)
             {
-                if (state.Buttons.A == ButtonState.Pressed) buttons.Add(Buttons.A);
-                if (state.Buttons.B == ButtonState.Pressed) buttons.Add(Buttons.B);
-                if (state.Buttons.Back == ButtonState.Pressed) buttons.Add(Buttons.Back);
-                if (state.Buttons.BigButton == ButtonState.Pressed) buttons.Add(Buttons.BigButton);
-                if (state.Buttons.LeftShoulder == ButtonState.Pressed) buttons.Add(Buttons.LeftShoulder);
-                if (state.Buttons.LeftStick == ButtonState.Pressed) buttons.Add(Buttons.LeftStick);
-                if (state.Buttons.RightShoulder == ButtonState.Pressed) buttons.Add(Buttons.RightShoulder);
-                if (state.Buttons.RightStick == ButtonState.Pressed) buttons.Add(Buttons.RightStick);
-                if (state.Buttons.Start == ButtonState.Pressed) buttons.Add(Buttons.Start);
-                if (state.Buttons.X == ButtonState.Pressed) buttons.Add(Buttons.X);
-                if (state.Buttons.Y == ButtonState.Pressed) buttons.Add(Buttons.Y);
-                if (state.DPad.Up == ButtonState.Pressed) buttons.Add(Buttons.DPadUp);
-                if (state.DPad.Down == ButtonState.Pressed) buttons.Add(Buttons.DPadDown);
-                if (state.DPad.Left == ButtonState.Pressed) buttons.Add(Buttons.DPadLeft);
-                if (state.DPad.Right == ButtonState.Pressed) buttons.Add(Buttons.DPadRight);
-                if (state.Triggers.Left > 0.2f) buttons.Add(Buttons.LeftTrigger);
-                if (state.Triggers.Right > 0.2f) buttons.Add(Buttons.RightTrigger);
+                if (controller.Buttons.A == ButtonState.Pressed)
+                    yield return SButton.ControllerA;
+                if (controller.Buttons.B == ButtonState.Pressed)
+                    yield return SButton.ControllerB;
+                if (controller.Buttons.Back == ButtonState.Pressed)
+                    yield return SButton.ControllerBack;
+                if (controller.Buttons.BigButton == ButtonState.Pressed)
+                    yield return SButton.BigButton;
+                if (controller.Buttons.LeftShoulder == ButtonState.Pressed)
+                    yield return SButton.LeftShoulder;
+                if (controller.Buttons.LeftStick == ButtonState.Pressed)
+                    yield return SButton.LeftStick;
+                if (controller.Buttons.RightShoulder == ButtonState.Pressed)
+                    yield return SButton.RightShoulder;
+                if (controller.Buttons.RightStick == ButtonState.Pressed)
+                    yield return SButton.RightStick;
+                if (controller.Buttons.Start == ButtonState.Pressed)
+                    yield return SButton.ControllerStart;
+                if (controller.Buttons.X == ButtonState.Pressed)
+                    yield return SButton.ControllerX;
+                if (controller.Buttons.Y == ButtonState.Pressed)
+                    yield return SButton.ControllerY;
+                if (controller.DPad.Up == ButtonState.Pressed)
+                    yield return SButton.DPadUp;
+                if (controller.DPad.Down == ButtonState.Pressed)
+                    yield return SButton.DPadDown;
+                if (controller.DPad.Left == ButtonState.Pressed)
+                    yield return SButton.DPadLeft;
+                if (controller.DPad.Right == ButtonState.Pressed)
+                    yield return SButton.DPadRight;
+                if (controller.Triggers.Left > 0.2f)
+                    yield return SButton.LeftTrigger;
+                if (controller.Triggers.Right > 0.2f)
+                    yield return SButton.RightTrigger;
             }
-            return buttons.ToArray();
-        }
-
-        /// <summary>Get the controller buttons which were pressed after the last update.</summary>
-        private Buttons[] GetFramePressedButtons()
-        {
-            var state = GamePad.GetState(PlayerIndex.One);
-            var buttons = new List<Buttons>();
-            if (state.IsConnected)
-            {
-                if (this.WasButtonJustPressed(Buttons.A, state.Buttons.A)) buttons.Add(Buttons.A);
-                if (this.WasButtonJustPressed(Buttons.B, state.Buttons.B)) buttons.Add(Buttons.B);
-                if (this.WasButtonJustPressed(Buttons.Back, state.Buttons.Back)) buttons.Add(Buttons.Back);
-                if (this.WasButtonJustPressed(Buttons.BigButton, state.Buttons.BigButton)) buttons.Add(Buttons.BigButton);
-                if (this.WasButtonJustPressed(Buttons.LeftShoulder, state.Buttons.LeftShoulder)) buttons.Add(Buttons.LeftShoulder);
-                if (this.WasButtonJustPressed(Buttons.LeftStick, state.Buttons.LeftStick)) buttons.Add(Buttons.LeftStick);
-                if (this.WasButtonJustPressed(Buttons.RightShoulder, state.Buttons.RightShoulder)) buttons.Add(Buttons.RightShoulder);
-                if (this.WasButtonJustPressed(Buttons.RightStick, state.Buttons.RightStick)) buttons.Add(Buttons.RightStick);
-                if (this.WasButtonJustPressed(Buttons.Start, state.Buttons.Start)) buttons.Add(Buttons.Start);
-                if (this.WasButtonJustPressed(Buttons.X, state.Buttons.X)) buttons.Add(Buttons.X);
-                if (this.WasButtonJustPressed(Buttons.Y, state.Buttons.Y)) buttons.Add(Buttons.Y);
-                if (this.WasButtonJustPressed(Buttons.DPadUp, state.DPad.Up)) buttons.Add(Buttons.DPadUp);
-                if (this.WasButtonJustPressed(Buttons.DPadDown, state.DPad.Down)) buttons.Add(Buttons.DPadDown);
-                if (this.WasButtonJustPressed(Buttons.DPadLeft, state.DPad.Left)) buttons.Add(Buttons.DPadLeft);
-                if (this.WasButtonJustPressed(Buttons.DPadRight, state.DPad.Right)) buttons.Add(Buttons.DPadRight);
-                if (this.WasButtonJustPressed(Buttons.LeftTrigger, state.Triggers.Left)) buttons.Add(Buttons.LeftTrigger);
-                if (this.WasButtonJustPressed(Buttons.RightTrigger, state.Triggers.Right)) buttons.Add(Buttons.RightTrigger);
-            }
-            return buttons.ToArray();
-        }
-
-        /// <summary>Get the controller buttons which were released after the last update.</summary>
-        private Buttons[] GetFrameReleasedButtons()
-        {
-            var state = GamePad.GetState(PlayerIndex.One);
-            var buttons = new List<Buttons>();
-            if (state.IsConnected)
-            {
-                if (this.WasButtonJustReleased(Buttons.A, state.Buttons.A)) buttons.Add(Buttons.A);
-                if (this.WasButtonJustReleased(Buttons.B, state.Buttons.B)) buttons.Add(Buttons.B);
-                if (this.WasButtonJustReleased(Buttons.Back, state.Buttons.Back)) buttons.Add(Buttons.Back);
-                if (this.WasButtonJustReleased(Buttons.BigButton, state.Buttons.BigButton)) buttons.Add(Buttons.BigButton);
-                if (this.WasButtonJustReleased(Buttons.LeftShoulder, state.Buttons.LeftShoulder)) buttons.Add(Buttons.LeftShoulder);
-                if (this.WasButtonJustReleased(Buttons.LeftStick, state.Buttons.LeftStick)) buttons.Add(Buttons.LeftStick);
-                if (this.WasButtonJustReleased(Buttons.RightShoulder, state.Buttons.RightShoulder)) buttons.Add(Buttons.RightShoulder);
-                if (this.WasButtonJustReleased(Buttons.RightStick, state.Buttons.RightStick)) buttons.Add(Buttons.RightStick);
-                if (this.WasButtonJustReleased(Buttons.Start, state.Buttons.Start)) buttons.Add(Buttons.Start);
-                if (this.WasButtonJustReleased(Buttons.X, state.Buttons.X)) buttons.Add(Buttons.X);
-                if (this.WasButtonJustReleased(Buttons.Y, state.Buttons.Y)) buttons.Add(Buttons.Y);
-                if (this.WasButtonJustReleased(Buttons.DPadUp, state.DPad.Up)) buttons.Add(Buttons.DPadUp);
-                if (this.WasButtonJustReleased(Buttons.DPadDown, state.DPad.Down)) buttons.Add(Buttons.DPadDown);
-                if (this.WasButtonJustReleased(Buttons.DPadLeft, state.DPad.Left)) buttons.Add(Buttons.DPadLeft);
-                if (this.WasButtonJustReleased(Buttons.DPadRight, state.DPad.Right)) buttons.Add(Buttons.DPadRight);
-                if (this.WasButtonJustReleased(Buttons.LeftTrigger, state.Triggers.Left)) buttons.Add(Buttons.LeftTrigger);
-                if (this.WasButtonJustReleased(Buttons.RightTrigger, state.Triggers.Right)) buttons.Add(Buttons.RightTrigger);
-            }
-            return buttons.ToArray();
-        }
-
-        /// <summary>Get whether a controller button was pressed since the last check.</summary>
-        /// <param name="button">The controller button to check.</param>
-        /// <param name="buttonState">The last known state.</param>
-        private bool WasButtonJustPressed(Buttons button, ButtonState buttonState)
-        {
-            return buttonState == ButtonState.Pressed && !this.PreviousPressedButtons.Contains(button);
-        }
-
-        /// <summary>Get whether a controller button was released since the last check.</summary>
-        /// <param name="button">The controller button to check.</param>
-        /// <param name="buttonState">The last known state.</param>
-        private bool WasButtonJustReleased(Buttons button, ButtonState buttonState)
-        {
-            return buttonState == ButtonState.Released && this.PreviousPressedButtons.Contains(button);
-        }
-
-        /// <summary>Get whether an analogue controller button was pressed since the last check.</summary>
-        /// <param name="button">The controller button to check.</param>
-        /// <param name="value">The last known value.</param>
-        private bool WasButtonJustPressed(Buttons button, float value)
-        {
-            return this.WasButtonJustPressed(button, value > 0.2f ? ButtonState.Pressed : ButtonState.Released);
-        }
-
-        /// <summary>Get whether an analogue controller button was released since the last check.</summary>
-        /// <param name="button">The controller button to check.</param>
-        /// <param name="value">The last known value.</param>
-        private bool WasButtonJustReleased(Buttons button, float value)
-        {
-            return this.WasButtonJustReleased(button, value > 0.2f ? ButtonState.Pressed : ButtonState.Released);
         }
 
         /// <summary>Get the player inventory changes between two states.</summary>

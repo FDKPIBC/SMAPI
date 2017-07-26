@@ -142,14 +142,22 @@ on the wiki for the first-time setup.
 ## Advanced usage
 ### Configuration file
 You can customise the SMAPI behaviour by editing the `StardewModdingAPI.config.json` file in your
-game folder. It contains these fields:
+game folder.
+
+Basic fields:
 
 field | purpose
 ----- | -------
 `DeveloperMode` | Default `false` (except in _SMAPI for developers_ releases). Whether to enable features intended for mod developers (mainly more detailed console logging).
 `CheckForUpdates` | Default `true`. Whether SMAPI should check for a newer version when you load the game. If a new version is available, a small message will appear in the console. This doesn't affect the load time even if your connection is offline or slow, because it happens in the background.
-`ModCompatibility` | A list of mod versions SMAPI should consider compatible or broken regardless of whether it detects incompatible code. Each record can be set to `AssumeCompatible` or `AssumeBroken`. Changing this field is not recommended and may destabilise your game.
-`VerboseLogging` | Whether SMAPI should log more information about the game context.
+`VerboseLogging` | Default `false`. Whether SMAPI should log more information about the game context.
+
+Advanced fields (changing these isn't recommended and may destabilise your game):
+
+field | purpose
+----- | -------
+`DisabledMods` | A list of mods to consider obsolete and not load.
+`ModCompatibility` | A list of mod versions SMAPI should consider compatible or broken regardless of whether it detects incompatible code. This can be used to force SMAPI to load an incompatible mod, though that isn't recommended.
 
 ### Command-line arguments
 SMAPI recognises the following command-line arguments. These are intended for internal use or
@@ -167,4 +175,4 @@ SMAPI uses a small number of conditional compilation constants, which you can se
 flag | purpose
 ---- | -------
 `SMAPI_FOR_WINDOWS` | Indicates that SMAPI is being compiled on Windows for players on Windows. Set automatically in `crossplatform.targets`.
-`SMAPI_2_0` | Sets SMAPI 2.0 mode, which enables features planned for SMAPI 2.0 and removes all deprecated code. This helps test how mods will work when SMAPI 2.0 is released.
+`SMAPI_1_x` | Sets legacy SMAPI 1._x_ mode, disables SMAPI 2.0 features, and enables deprecated code. This will be removed when SMAPI 2.0 is released.

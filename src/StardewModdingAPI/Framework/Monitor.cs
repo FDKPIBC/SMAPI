@@ -25,15 +25,7 @@ namespace StardewModdingAPI.Framework
         private static readonly int MaxLevelLength = (from level in Enum.GetValues(typeof(LogLevel)).Cast<LogLevel>() select level.ToString().Length).Max();
 
         /// <summary>The console text color for each log level.</summary>
-        private static readonly Dictionary<LogLevel, ConsoleColor> Colors = new Dictionary<LogLevel, ConsoleColor>
-        {
-            [LogLevel.Trace] = ConsoleColor.DarkGray,
-            [LogLevel.Debug] = ConsoleColor.DarkGray,
-            [LogLevel.Info] = ConsoleColor.White,
-            [LogLevel.Warn] = ConsoleColor.Yellow,
-            [LogLevel.Error] = ConsoleColor.Red,
-            [LogLevel.Alert] = ConsoleColor.Magenta
-        };
+        private static readonly IDictionary<LogLevel, ConsoleColor> Colors = Monitor.GetConsoleColorScheme();
 
         /// <summary>Propagates notification that SMAPI should exit.</summary>
         private readonly CancellationTokenSource ExitTokenSource;
@@ -45,7 +37,7 @@ namespace StardewModdingAPI.Framework
         /// <summary>Whether SMAPI is aborting. Mods don't need to worry about this unless they have background tasks.</summary>
         public bool IsExiting => this.ExitTokenSource.IsCancellationRequested;
 
-#if SMAPI_2_0
+#if !SMAPI_1_x
         /// <summary>Whether to show the full log stamps (with time/level/logger) in the console. If false, shows a simplified stamp with only the logger.</summary>
         internal bool ShowFullStampInConsole { get; set; }
 #endif
@@ -97,7 +89,7 @@ namespace StardewModdingAPI.Framework
             this.ExitTokenSource.Cancel();
         }
 
-#if SMAPI_2_0
+#if !SMAPI_1_x
         /// <summary>Write a newline to the console and log file.</summary>
         internal void Newline()
         {
@@ -108,7 +100,7 @@ namespace StardewModdingAPI.Framework
         }
 #endif
 
-#if !SMAPI_2_0
+#if SMAPI_1_x
         /// <summary>Log a message for the player or developer, using the specified console color.</summary>
         /// <param name="source">The name of the mod logging the message.</param>
         /// <param name="message">The message to log.</param>
@@ -144,7 +136,7 @@ namespace StardewModdingAPI.Framework
             string levelStr = level.ToString().ToUpper().PadRight(Monitor.MaxLevelLength);
 
             string fullMessage = $"[{DateTime.Now:HH:mm:ss} {levelStr} {source}] {message}";
-#if SMAPI_2_0
+#if !SMAPI_1_x
             string consoleMessage = this.ShowFullStampInConsole ? fullMessage : $"[{source}] {message}";
 #else
             string consoleMessage = fullMessage;
@@ -171,6 +163,57 @@ namespace StardewModdingAPI.Framework
             // write to log file
             if (this.WriteToFile)
                 this.LogFile.WriteLine(fullMessage);
+        }
+
+        /// <summary>Get the color scheme to use for the current console.</summary>
+        private static IDictionary<LogLevel, ConsoleColor> GetConsoleColorScheme()
+        {
+#if !SMAPI_1_x
+            // scheme for dark console background
+            if (Monitor.IsDark(Console.BackgroundColor))
+            {
+#endif
+                return new Dictionary<LogLevel, ConsoleColor>
+                {
+                    [LogLevel.Trace] = ConsoleColor.DarkGray,
+                    [LogLevel.Debug] = ConsoleColor.DarkGray,
+                    [LogLevel.Info] = ConsoleColor.White,
+                    [LogLevel.Warn] = ConsoleColor.Yellow,
+                    [LogLevel.Error] = ConsoleColor.Red,
+                    [LogLevel.Alert] = ConsoleColor.Magenta
+                };
+#if !SMAPI_1_x
+            }
+
+            // scheme for light console background
+            return new Dictionary<LogLevel, ConsoleColor>
+            {
+                [LogLevel.Trace] = ConsoleColor.DarkGray,
+                [LogLevel.Debug] = ConsoleColor.DarkGray,
+                [LogLevel.Info] = ConsoleColor.Black,
+                [LogLevel.Warn] = ConsoleColor.DarkYellow,
+                [LogLevel.Error] = ConsoleColor.Red,
+                [LogLevel.Alert] = ConsoleColor.DarkMagenta
+            };
+#endif
+        }
+
+        /// <summary>Get whether a console color should be considered dark, which is subjectively defined as 'white looks better than black on this text'.</summary>
+        /// <param name="color">The color to check.</param>
+        private static bool IsDark(ConsoleColor color)
+        {
+            switch (color)
+            {
+                case ConsoleColor.Black:
+                case ConsoleColor.Blue:
+                case ConsoleColor.DarkBlue:
+                case ConsoleColor.DarkRed:
+                case ConsoleColor.Red:
+                    return true;
+
+                default:
+                    return false;
+            }
         }
     }
 }

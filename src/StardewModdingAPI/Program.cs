@@ -17,6 +17,7 @@ using StardewModdingAPI.Events;
 using StardewModdingAPI.Framework;
 using StardewModdingAPI.Framework.Logging;
 using StardewModdingAPI.Framework.Models;
+using StardewModdingAPI.Framework.ModHelpers;
 using StardewModdingAPI.Framework.ModLoading;
 using StardewModdingAPI.Framework.Reflection;
 using StardewModdingAPI.Framework.Serialisation;
@@ -45,7 +46,7 @@ namespace StardewModdingAPI
         private readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
 
         /// <summary>Simplifies access to private game code.</summary>
-        private readonly IReflectionHelper Reflection = new ReflectionHelper();
+        private readonly Reflector Reflection = new Reflector();
 
         /// <summary>The underlying game instance.</summary>
         private SGame GameInstance;
@@ -124,9 +125,9 @@ namespace StardewModdingAPI
             try
             {
                 // init logging
-                this.Monitor.Log($"SMAPI {Constants.ApiVersion} with Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)} on {this.GetFriendlyPlatformName()}", LogLevel.Info);
+                this.Monitor.Log($"SMAPI {Constants.ApiVersion} with Stardew Valley {Constants.GameVersion} on {this.GetFriendlyPlatformName()}", LogLevel.Info);
                 this.Monitor.Log($"Mods go here: {Constants.ModPath}");
-#if !SMAPI_2_0
+#if SMAPI_1_x
                 this.Monitor.Log("Preparing SMAPI...");
 #endif
 
@@ -137,13 +138,13 @@ namespace StardewModdingAPI
                 // validate game version
                 if (Constants.GameVersion.IsOlderThan(Constants.MinimumGameVersion))
                 {
-                    this.Monitor.Log($"Oops! You're running Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)}, but the oldest supported version is {Constants.GetGameDisplayVersion(Constants.MinimumGameVersion)}. Please update your game before using SMAPI. If you have the beta version on Steam, you may need to opt out to get the latest non-beta updates.", LogLevel.Error);
+                    this.Monitor.Log($"Oops! You're running Stardew Valley {Constants.GameVersion}, but the oldest supported version is {Constants.MinimumGameVersion}. Please update your game before using SMAPI.", LogLevel.Error);
                     this.PressAnyKeyToExit();
                     return;
                 }
                 if (Constants.MaximumGameVersion != null && Constants.GameVersion.IsNewerThan(Constants.MaximumGameVersion))
                 {
-                    this.Monitor.Log($"Oops! You're running Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)}, but this version of SMAPI is only compatible up to Stardew Valley {Constants.GetGameDisplayVersion(Constants.MaximumGameVersion)}. Please check for a newer version of SMAPI.", LogLevel.Error);
+                    this.Monitor.Log($"Oops! You're running Stardew Valley {Constants.GameVersion}, but this version of SMAPI is only compatible up to Stardew Valley {Constants.MaximumGameVersion}. Please check for a newer version of SMAPI.", LogLevel.Error);
                     this.PressAnyKeyToExit();
                     return;
                 }
@@ -190,8 +191,8 @@ namespace StardewModdingAPI
                 ContentEvents.AfterLocaleChanged += (sender, e) => this.OnLocaleChanged();
 
                 // set window titles
-                this.GameInstance.Window.Title = $"Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)} - running SMAPI {Constants.ApiVersion}";
-                Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)}";
+                this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion}";
+                Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}";
             }
             catch (Exception ex)
             {
@@ -212,10 +213,10 @@ namespace StardewModdingAPI
             }
 
             // start game
-#if SMAPI_2_0
-            this.Monitor.Log("Starting game...", LogLevel.Trace);
-#else
+#if SMAPI_1_x
             this.Monitor.Log("Starting game...");
+#else
+            this.Monitor.Log("Starting game...", LogLevel.Trace);
 #endif
             try
             {
@@ -233,7 +234,7 @@ namespace StardewModdingAPI
             }
         }
 
-#if !SMAPI_2_0
+#if SMAPI_1_x
         /// <summary>Get a monitor for legacy code which doesn't have one passed in.</summary>
         [Obsolete("This method should only be used when needed for backwards compatibility.")]
         internal IMonitor GetLegacyMonitorForMod()
@@ -314,7 +315,7 @@ namespace StardewModdingAPI
             if (Type.GetType($"StardewValley.LocalizedContentManager+LanguageCode, {gameAssemblyName}", throwOnError: false) == null)
             {
                 PrintErrorAndExit(Constants.GameVersion.IsOlderThan(Constants.MinimumGameVersion)
-                    ? $"Oops! You're running Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)}, but the oldest supported version is {Constants.GetGameDisplayVersion(Constants.MinimumGameVersion)}. Please update your game before using SMAPI."
+                    ? $"Oops! You're running Stardew Valley {Constants.GameVersion}, but the oldest supported version is {Constants.MinimumGameVersion}. Please update your game before using SMAPI."
                     : "Oops! SMAPI doesn't seem to be compatible with your game. Make sure you're running the latest version of Stardew Valley and SMAPI."
                 );
             }
@@ -332,7 +333,7 @@ namespace StardewModdingAPI
             this.DeprecationManager = new DeprecationManager(this.Monitor, this.ModRegistry);
             this.CommandManager = new CommandManager();
 
-#if !SMAPI_2_0
+#if SMAPI_1_x
             // inject compatibility shims
 #pragma warning disable 618
             Command.Shim(this.CommandManager, this.DeprecationManager, this.ModRegistry);
@@ -356,7 +357,7 @@ namespace StardewModdingAPI
             if (this.Settings.DeveloperMode)
             {
                 this.Monitor.ShowTraceInConsole = true;
-#if SMAPI_2_0
+#if !SMAPI_1_x
                 this.Monitor.ShowFullStampInConsole = true;
 #endif
                 this.Monitor.Log($"You configured SMAPI to run in developer mode. The console may be much more verbose. You can disable developer mode by installing the non-developer version of SMAPI, or by editing {Constants.ApiConfigPath}.", LogLevel.Info);
@@ -374,10 +375,10 @@ namespace StardewModdingAPI
 
             // load mods
             {
-#if SMAPI_2_0
-                this.Monitor.Log("Loading mod metadata...", LogLevel.Trace);
-#else
+#if SMAPI_1_x
                 this.Monitor.Log("Loading mod metadata...");
+#else
+                this.Monitor.Log("Loading mod metadata...", LogLevel.Trace);
 #endif
                 ModResolver resolver = new ModResolver();
 
@@ -386,7 +387,7 @@ namespace StardewModdingAPI
                 resolver.ValidateManifests(mods, Constants.ApiVersion);
 
                 // check for deprecated metadata
-#if !SMAPI_2_0
+#if SMAPI_1_x
                 IList<Action> deprecationWarnings = new List<Action>();
                 foreach (IModMetadata mod in mods.Where(m => m.Status != ModMetadataStatus.Failed))
                 {
@@ -421,19 +422,19 @@ namespace StardewModdingAPI
                             mod.SetStatus(ModMetadataStatus.Failed, $"it requires per-save configuration files ('psconfigs') which couldn't be created: {ex.GetLogSummary()}");
                         }
                     }
-            }
+                }
 #endif
 
                 // process dependencies
                 mods = resolver.ProcessDependencies(mods).ToArray();
 
                 // load mods
-#if SMAPI_2_0
-                this.LoadMods(mods, new JsonHelper(), this.ContentManager);
-#else
+#if SMAPI_1_x
                 this.LoadMods(mods, new JsonHelper(), this.ContentManager, deprecationWarnings);
                 foreach (Action warning in deprecationWarnings)
                     warning();
+#else
+                this.LoadMods(mods, new JsonHelper(), this.ContentManager);
 #endif
             }
             if (this.Monitor.IsExiting)
@@ -444,8 +445,8 @@ namespace StardewModdingAPI
 
             // update window titles
             int modsLoaded = this.ModRegistry.GetMods().Count();
-            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)} - running SMAPI {Constants.ApiVersion} with {modsLoaded} mods";
-            Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GetGameDisplayVersion(Constants.GameVersion)} with {modsLoaded} mods";
+            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion} with {modsLoaded} mods";
+            Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion} with {modsLoaded} mods";
 
             // start SMAPI console
             new Thread(this.RunConsoleLoop).Start();
@@ -468,7 +469,7 @@ namespace StardewModdingAPI
         private void RunConsoleLoop()
         {
             // prepare console
-#if !SMAPI_2_0
+#if SMAPI_1_x
             this.Monitor.Log("Starting console...");
 #endif
             this.Monitor.Log("Type 'help' for help, or 'help <cmd>' for a command's usage", LogLevel.Info);
@@ -602,17 +603,17 @@ namespace StardewModdingAPI
         /// <param name="mods">The mods to load.</param>
         /// <param name="jsonHelper">The JSON helper with which to read mods' JSON files.</param>
         /// <param name="contentManager">The content manager to use for mod content.</param>
-#if !SMAPI_2_0
-/// <param name="deprecationWarnings">A list to populate with any deprecation warnings.</param>
+#if SMAPI_1_x
+        /// <param name="deprecationWarnings">A list to populate with any deprecation warnings.</param>
         private void LoadMods(IModMetadata[] mods, JsonHelper jsonHelper, SContentManager contentManager, IList<Action> deprecationWarnings)
 #else
         private void LoadMods(IModMetadata[] mods, JsonHelper jsonHelper, SContentManager contentManager)
 #endif
         {
-#if SMAPI_2_0
-            this.Monitor.Log("Loading mods...", LogLevel.Trace);
-#else
+#if SMAPI_1_x
             this.Monitor.Log("Loading mods...");
+#else
+            this.Monitor.Log("Loading mods...", LogLevel.Trace);
 #endif
             // load mod assemblies
             IDictionary<IModMetadata, string> skippedMods = new Dictionary<IModMetadata, string>();
@@ -648,7 +649,11 @@ namespace StardewModdingAPI
                     }
                     catch (IncompatibleInstructionException ex)
                     {
+#if SMAPI_1_x
                         TrackSkip(metadata, $"it's not compatible with the latest version of the game or SMAPI (detected {ex.NounPhrase}). Please check for a newer version of the mod.");
+#else
+                        TrackSkip(metadata, $"it's no longer compatible (detected {ex.NounPhrase}). Please check for a newer version of the mod.");
+#endif
                         continue;
                     }
                     catch (Exception ex)
@@ -690,7 +695,7 @@ namespace StardewModdingAPI
                             continue;
                         }
 
-#if !SMAPI_2_0
+#if SMAPI_1_x
                         // prevent mods from using SMAPI 2.0 content interception before release
                         // ReSharper disable SuspiciousTypeConversion.Global
                         if (mod is IAssetEditor || mod is IAssetLoader)
@@ -701,12 +706,21 @@ namespace StardewModdingAPI
 #endif
 
                         // inject data
-                        mod.ModManifest = manifest;
-                        mod.Helper = new ModHelper(metadata.DisplayName, metadata.DirectoryPath, jsonHelper, this.ModRegistry, this.CommandManager, contentManager, this.Reflection);
-                        mod.Monitor = this.GetSecondaryMonitor(metadata.DisplayName);
-#if !SMAPI_2_0
-                        mod.PathOnDisk = metadata.DirectoryPath;
+                        {
+                            IMonitor monitor = this.GetSecondaryMonitor(metadata.DisplayName);
+                            ICommandHelper commandHelper = new CommandHelper(manifest.UniqueID, metadata.DisplayName, this.CommandManager);
+                            IContentHelper contentHelper = new ContentHelper(contentManager, metadata.DirectoryPath, manifest.UniqueID, metadata.DisplayName, monitor);
+                            IReflectionHelper reflectionHelper = new ReflectionHelper(manifest.UniqueID, this.Reflection);
+                            IModRegistry modRegistryHelper = new ModRegistryHelper(manifest.UniqueID, this.ModRegistry);
+                            ITranslationHelper translationHelper = new TranslationHelper(manifest.UniqueID, manifest.Name, contentManager.GetLocale(), contentManager.GetCurrentLanguage());
+
+                            mod.ModManifest = manifest;
+                            mod.Helper = new ModHelper(manifest.UniqueID, metadata.DirectoryPath, jsonHelper, contentHelper, commandHelper, modRegistryHelper, reflectionHelper, translationHelper);
+                            mod.Monitor = monitor;
+#if SMAPI_1_x
+                            mod.PathOnDisk = metadata.DirectoryPath;
 #endif
+                        }
 
                         // track mod
                         metadata.SetMod(mod);
@@ -721,7 +735,7 @@ namespace StardewModdingAPI
             IModMetadata[] loadedMods = this.ModRegistry.GetMods().ToArray();
 
             // log skipped mods
-#if SMAPI_2_0
+#if !SMAPI_1_x
             this.Monitor.Newline();
 #endif
             if (skippedMods.Any())
@@ -737,7 +751,7 @@ namespace StardewModdingAPI
                     else
                         this.Monitor.Log($"   {mod.DisplayName} because {reason}", LogLevel.Error);
                 }
-#if SMAPI_2_0
+#if !SMAPI_1_x
                 this.Monitor.Newline();
 #endif
             }
@@ -754,7 +768,7 @@ namespace StardewModdingAPI
                     LogLevel.Info
                 );
             }
-#if SMAPI_2_0
+#if !SMAPI_1_x
             this.Monitor.Newline();
 #endif
 
@@ -776,17 +790,20 @@ namespace StardewModdingAPI
                 {
                     IMod mod = metadata.Mod;
                     mod.Entry(mod.Helper);
-#if !SMAPI_2_0
+#if SMAPI_1_x
                     (mod as Mod)?.Entry(); // deprecated since 1.0
 
                     // raise deprecation warning for old Entry() methods
                     if (this.DeprecationManager.IsVirtualMethodImplemented(mod.GetType(), typeof(Mod), nameof(Mod.Entry), new[] { typeof(object[]) }))
                         deprecationWarnings.Add(() => this.DeprecationManager.Warn(metadata.DisplayName, $"{nameof(Mod)}.{nameof(Mod.Entry)}(object[]) instead of {nameof(Mod)}.{nameof(Mod.Entry)}({nameof(IModHelper)})", "1.0", DeprecationLevel.PendingRemoval));
+#else
+                    if (!this.DeprecationManager.IsVirtualMethodImplemented(mod.GetType(), typeof(Mod), nameof(Mod.Entry), new[] { typeof(IModHelper) }))
+                        this.Monitor.Log($"{metadata.DisplayName} doesn't implement Entry() and may not work correctly.", LogLevel.Error);
 #endif
                 }
                 catch (Exception ex)
                 {
-                    this.Monitor.Log($"The {metadata.DisplayName} mod failed on entry initialisation. It will still be loaded, but may not function correctly.\n{ex.GetLogSummary()}", LogLevel.Warn);
+                    this.Monitor.Log($"{metadata.DisplayName} failed on entry and might not work correctly. Technical details:\n{ex.GetLogSummary()}", LogLevel.Error);
                 }
             }
 
@@ -796,19 +813,27 @@ namespace StardewModdingAPI
             {
                 if (metadata.Mod.Helper.Content is ContentHelper helper)
                 {
+                    // TODO: optimise by only reloading assets the new editors/loaders can intercept
                     helper.ObservableAssetEditors.CollectionChanged += (sender, e) =>
                     {
                         if (e.NewItems.Count > 0)
-                            this.ContentManager.Reset();
+                        {
+                            this.Monitor.Log("Detected new asset editor, resetting cache...", LogLevel.Trace);
+                            this.ContentManager.InvalidateCache((key, type) => true);
+                        }
                     };
                     helper.ObservableAssetLoaders.CollectionChanged += (sender, e) =>
                     {
                         if (e.NewItems.Count > 0)
-                            this.ContentManager.Reset();
+                        {
+                            this.Monitor.Log("Detected new asset loader, resetting cache...", LogLevel.Trace);
+                            this.ContentManager.InvalidateCache((key, type) => true);
+                        }
                     };
                 }
             }
-            this.ContentManager.Reset();
+            this.Monitor.Log("Resetting cache to enable interception...", LogLevel.Trace);
+            this.ContentManager.InvalidateCache((key, type) => true);
         }
 
         /// <summary>Reload translations for all mods.</summary>
@@ -860,7 +885,10 @@ namespace StardewModdingAPI
                     }
                     else
                     {
-#if SMAPI_2_0
+#if SMAPI_1_x
+                        this.Monitor.Log("The following commands are registered: " + string.Join(", ", this.CommandManager.GetAll().Select(p => p.Name)) + ".", LogLevel.Info);
+                        this.Monitor.Log("For more information about a command, type 'help command_name'.", LogLevel.Info);
+#else
                         string message = "The following commands are registered:\n";
                         IGrouping<string, string>[] groups = (from command in this.CommandManager.GetAll() orderby command.ModName, command.Name group command.Name by command.ModName).ToArray();
                         foreach (var group in groups)
@@ -872,9 +900,6 @@ namespace StardewModdingAPI
                         message += "For more information about a command, type 'help command_name'.";
 
                         this.Monitor.Log(message, LogLevel.Info);
-#else
-                        this.Monitor.Log("The following commands are registered: " + string.Join(", ", this.CommandManager.GetAll().Select(p => p.Name)) + ".", LogLevel.Info);
-                        this.Monitor.Log("For more information about a command, type 'help command_name'.", LogLevel.Info);
 #endif
                     }
                     break;
@@ -924,7 +949,7 @@ namespace StardewModdingAPI
             {
                 WriteToConsole = this.Monitor.WriteToConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,
-#if SMAPI_2_0
+#if !SMAPI_1_x
                 ShowFullStampInConsole = this.Settings.DeveloperMode
 #endif
             };

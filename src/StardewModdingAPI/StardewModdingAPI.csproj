@@ -91,9 +91,12 @@
       <Link>Properties\GlobalAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Command.cs" />
+    <Compile Include="Metadata\CoreAssets.cs" />
     <Compile Include="ContentSource.cs" />
     <Compile Include="Events\ContentEvents.cs" />
+    <Compile Include="Events\EventArgsInput.cs" />
     <Compile Include="Events\EventArgsValueChanged.cs" />
+    <Compile Include="Events\InputEvents.cs" />
     <Compile Include="Framework\Content\AssetInfo.cs" />
     <Compile Include="Framework\Exceptions\SContentLoadException.cs" />
     <Compile Include="Framework\Command.cs" />
@@ -124,8 +127,17 @@
     <Compile Include="Events\GameEvents.cs" />
     <Compile Include="Events\GraphicsEvents.cs" />
     <Compile Include="Framework\Countdown.cs" />
+    <Compile Include="Framework\GameVersion.cs" />
     <Compile Include="Framework\IModMetadata.cs" />
     <Compile Include="Framework\Models\DisabledMod.cs" />
+    <Compile Include="Framework\Models\ModCompatibilityID.cs" />
+    <Compile Include="Framework\ModHelpers\BaseHelper.cs" />
+    <Compile Include="Framework\ModHelpers\CommandHelper.cs" />
+    <Compile Include="Framework\ModHelpers\ContentHelper.cs" />
+    <Compile Include="Framework\ModHelpers\ModHelper.cs" />
+    <Compile Include="Framework\ModHelpers\ModRegistryHelper.cs" />
+    <Compile Include="Framework\ModHelpers\ReflectionHelper.cs" />
+    <Compile Include="Framework\ModHelpers\TranslationHelper.cs" />
     <Compile Include="Framework\ModLoading\InvalidModStateException.cs" />
     <Compile Include="Framework\ModLoading\ModDependencyStatus.cs" />
     <Compile Include="Framework\ModLoading\ModMetadataStatus.cs" />
@@ -133,7 +145,6 @@
     <Compile Include="Framework\ModLoading\AssemblyDefinitionResolver.cs" />
     <Compile Include="Framework\ModLoading\AssemblyParseResult.cs" />
     <Compile Include="Framework\CommandManager.cs" />
-    <Compile Include="Framework\ContentHelper.cs" />
     <Compile Include="Framework\Content\AssetData.cs" />
     <Compile Include="Framework\Content\AssetDataForObject.cs" />
     <Compile Include="Framework\Content\AssetDataForDictionary.cs" />
@@ -141,7 +152,6 @@
     <Compile Include="Context.cs" />
     <Compile Include="Framework\Logging\ConsoleInterceptionManager.cs" />
     <Compile Include="Framework\Logging\InterceptingTextWriter.cs" />
-    <Compile Include="Framework\CommandHelper.cs" />
     <Compile Include="Framework\Models\ManifestDependency.cs" />
     <Compile Include="Framework\Models\ModCompatibilityType.cs" />
     <Compile Include="Framework\Models\SConfig.cs" />
@@ -152,8 +162,7 @@
     <Compile Include="Framework\Exceptions\SParseException.cs" />
     <Compile Include="Framework\Serialisation\JsonHelper.cs" />
     <Compile Include="Framework\Serialisation\SelectiveStringEnumConverter.cs" />
-    <Compile Include="Framework\Serialisation\ManifestFieldConverter.cs" />
-    <Compile Include="Framework\TranslationHelper.cs" />
+    <Compile Include="Framework\Serialisation\SFieldConverter.cs" />
     <Compile Include="IAssetEditor.cs" />
     <Compile Include="IAssetInfo.cs" />
     <Compile Include="IAssetLoader.cs" />
@@ -178,10 +187,11 @@
     <Compile Include="Framework\Reflection\CacheEntry.cs" />
     <Compile Include="Framework\Reflection\PrivateField.cs" />
     <Compile Include="Framework\Reflection\PrivateMethod.cs" />
-    <Compile Include="Framework\Reflection\ReflectionHelper.cs" />
+    <Compile Include="Framework\Reflection\Reflector.cs" />
     <Compile Include="IManifest.cs" />
     <Compile Include="IMod.cs" />
     <Compile Include="IModHelper.cs" />
+    <Compile Include="IModLinked.cs" />
     <Compile Include="Framework\Logging\LogFileManager.cs" />
     <Compile Include="IPrivateProperty.cs" />
     <Compile Include="ISemanticVersion.cs" />
@@ -197,7 +207,6 @@
     <Compile Include="Framework\Monitor.cs" />
     <Compile Include="Framework\Models\Manifest.cs" />
     <Compile Include="Mod.cs" />
-    <Compile Include="Framework\ModHelper.cs" />
     <Compile Include="PatchMode.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -207,7 +216,10 @@
     <Compile Include="IReflectionHelper.cs" />
     <Compile Include="SemanticVersion.cs" />
     <Compile Include="Translation.cs" />
+    <Compile Include="ICursorPosition.cs" />
     <Compile Include="Utilities\SDate.cs" />
+    <Compile Include="Utilities\SButton.cs" />
+    <Compile Include="Framework\CursorPosition.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
@@ -267,7 +279,6 @@
     <Copy SourceFiles="$(TargetDir)\$(TargetName).xml" DestinationFolder="$(GamePath)" />
     <Copy SourceFiles="$(TargetDir)\Newtonsoft.Json.dll" DestinationFolder="$(GamePath)" />
     <Copy SourceFiles="$(TargetDir)\Mono.Cecil.dll" DestinationFolder="$(GamePath)" />
-    <Copy SourceFiles="$(TargetDir)\System.ValueTuple.dll" DestinationFolder="$(GamePath)" />
   </Target>
 
   <!-- launch SMAPI on debug -->
@@ -276,7 +287,7 @@
     <StartProgram>$(GamePath)\StardewModdingAPI.exe</StartProgram>
     <StartWorkingDirectory>$(GamePath)</StartWorkingDirectory>
   </PropertyGroup>
-  
+
   <!-- Somehow this makes Visual Studio for Mac recognise the previous section. -->
   <!-- Nobody knows why. -->
   <PropertyGroup Condition="'$(RunConfiguration)' == 'Default'" />

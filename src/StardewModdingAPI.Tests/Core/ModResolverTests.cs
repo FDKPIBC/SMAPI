@@ -126,7 +126,7 @@ namespace StardewModdingAPI.Tests.Core
         public void ValidateManifests_Skips_Failed()
         {
             // arrange
-            Mock<IModMetadata> mock = new Mock<IModMetadata>(MockBehavior.Strict);
+            Mock<IModMetadata> mock = this.GetMetadata("Mod A");
             mock.Setup(p => p.Status).Returns(ModMetadataStatus.Failed);
 
             // act
@@ -140,10 +140,8 @@ namespace StardewModdingAPI.Tests.Core
         public void ValidateManifests_ModCompatibility_AssumeBroken_Fails()
         {
             // arrange
-            Mock<IModMetadata> mock = new Mock<IModMetadata>(MockBehavior.Strict);
-            mock.Setup(p => p.Status).Returns(ModMetadataStatus.Found);
-            mock.Setup(p => p.Compatibility).Returns(new ModCompatibility { Compatibility = ModCompatibilityType.AssumeBroken });
-            mock.Setup(p => p.SetStatus(ModMetadataStatus.Failed, It.IsAny<string>())).Returns(() => mock.Object);
+            Mock<IModMetadata> mock = this.GetMetadata("Mod A", new string[0], allowStatusChange: true);
+            this.SetupMetadataForValidation(mock, new ModCompatibility { Compatibility = ModCompatibilityType.AssumeBroken, UpperVersion = new SemanticVersion("1.0"), UpdateUrls = new[] { "http://example.org" }});
 
             // act
             new ModResolver().ValidateManifests(new[] { mock.Object }, apiVersion: new SemanticVersion("1.0"));
@@ -156,11 +154,9 @@ namespace StardewModdingAPI.Tests.Core
         public void ValidateManifests_MinimumApiVersion_Fails()
         {
             // arrange
-            Mock<IModMetadata> mock = new Mock<IModMetadata>(MockBehavior.Strict);
-            mock.Setup(p => p.Status).Returns(ModMetadataStatus.Found);
-            mock.Setup(p => p.Compatibility).Returns(() => null);
+            Mock<IModMetadata> mock = this.GetMetadata("Mod A", new string[0], allowStatusChange: true);
             mock.Setup(p => p.Manifest).Returns(this.GetManifest(m => m.MinimumApiVersion = new SemanticVersion("1.1")));
-            mock.Setup(p => p.SetStatus(ModMetadataStatus.Failed, It.IsAny<string>())).Returns(() => mock.Object);
+            this.SetupMetadataForValidation(mock);
 
             // act
             new ModResolver().ValidateManifests(new[] { mock.Object }, apiVersion: new SemanticVersion("1.0"));
@@ -173,12 +169,8 @@ namespace StardewModdingAPI.Tests.Core
         public void ValidateManifests_MissingEntryDLL_Fails()
         {
             // arrange
-            Mock<IModMetadata> mock = new Mock<IModMetadata>(MockBehavior.Strict);
-            mock.Setup(p => p.Status).Returns(ModMetadataStatus.Found);
-            mock.Setup(p => p.Compatibility).Returns(() => null);
-            mock.Setup(p => p.Manifest).Returns(this.GetManifest());
-            mock.Setup(p => p.DirectoryPath).Returns(Path.GetTempPath());
-            mock.Setup(p => p.SetStatus(ModMetadataStatus.Failed, It.IsAny<string>())).Returns(() => mock.Object);
+            Mock<IModMetadata> mock = this.GetMetadata(this.GetManifest("Mod A", "1.0", manifest => manifest.EntryDll = "Missing.dll"), allowStatusChange: true);
+            this.SetupMetadataForValidation(mock);
 
             // act
             new ModResolver().ValidateManifests(new[] { mock.Object }, apiVersion: new SemanticVersion("1.0"));
@@ -186,6 +178,26 @@ namespace StardewModdingAPI.Tests.Core
             // assert
             mock.Verify(p => p.SetStatus(ModMetadataStatus.Failed, It.IsAny<string>()), Times.Once, "The validation did not fail the metadata.");
         }
+
+#if !SMAPI_1_x
+        [Test(Description = "Assert that validation fails when multiple mods have the same unique ID.")]
+        public void ValidateManifests_DuplicateUniqueID_Fails()
+        {
+            // arrange
+            Mock<IModMetadata> modA = this.GetMetadata("Mod A", new string[0], allowStatusChange: true);
+            Mock<IModMetadata> modB = this.GetMetadata(this.GetManifest("Mod A", "1.0", manifest => manifest.Name = "Mod B"), allowStatusChange: true);
+            Mock<IModMetadata> modC = this.GetMetadata("Mod C", new string[0], allowStatusChange: false);
+            foreach (Mock<IModMetadata> mod in new[] { modA, modB, modC })
+                this.SetupMetadataForValidation(mod);
+
+            // act
+            new ModResolver().ValidateManifests(new[] { modA.Object, modB.Object }, apiVersion: new SemanticVersion("1.0"));
+
+            // assert
+            modA.Verify(p => p.SetStatus(ModMetadataStatus.Failed, It.IsAny<string>()), Times.Once, "The validation did not fail the first mod with a unique ID.");
+            modB.Verify(p => p.SetStatus(ModMetadataStatus.Failed, It.IsAny<string>()), Times.Once, "The validation did not fail the second mod with a unique ID.");
+        }
+#endif
 
         [Test(Description = "Assert that validation fails when the manifest references a DLL that does not exist.")]
         public void ValidateManifests_Valid_Passes()
@@ -411,6 +423,40 @@ namespace StardewModdingAPI.Tests.Core
             Assert.AreSame(modB.Object, mods[1], "The load order is incorrect: mod B should be second since it needs mod A.");
         }
 
+#if !SMAPI_1_x
+        [Test(Description = "Assert that optional dependencies are sorted correctly if present.")]
+        public void ProcessDependencies_IfOptional()
+        {
+            // arrange
+            // A ◀── B
+            Mock<IModMetadata> modA = this.GetMetadata(this.GetManifest("Mod A", "1.0"));
+            Mock<IModMetadata> modB = this.GetMetadata(this.GetManifest("Mod B", "1.0", new ManifestDependency("Mod A", "1.0", required: false)), allowStatusChange: false);
+
+            // act
+            IModMetadata[] mods = new ModResolver().ProcessDependencies(new[] { modB.Object, modA.Object }).ToArray();
+
+            // assert
+            Assert.AreEqual(2, mods.Length, 0, "Expected to get the same number of mods input.");
+            Assert.AreSame(modA.Object, mods[0], "The load order is incorrect: mod A should be first since it's needed by mod B.");
+            Assert.AreSame(modB.Object, mods[1], "The load order is incorrect: mod B should be second since it needs mod A.");
+        }
+
+        [Test(Description = "Assert that optional dependencies are accepted if they're missing.")]
+        public void ProcessDependencies_IfOptional_SucceedsIfMissing()
+        {
+            // arrange
+            // A ◀── B where A doesn't exist
+            Mock<IModMetadata> modB = this.GetMetadata(this.GetManifest("Mod B", "1.0", new ManifestDependency("Mod A", "1.0", required: false)), allowStatusChange: false);
+
+            // act
+            IModMetadata[] mods = new ModResolver().ProcessDependencies(new[] { modB.Object }).ToArray();
+
+            // assert
+            Assert.AreEqual(1, mods.Length, 0, "Expected to get the same number of mods input.");
+            Assert.AreSame(modB.Object, mods[0], "The load order is incorrect: mod B should be first since it's the only mod.");
+        }
+#endif
+
 
         /*********
         ** Private methods
@@ -435,8 +481,9 @@ namespace StardewModdingAPI.Tests.Core
         /// <summary>Get a randomised basic manifest.</summary>
         /// <param name="uniqueID">The mod's name and unique ID.</param>
         /// <param name="version">The mod version.</param>
+        /// <param name="adjust">Adjust the generated manifest.</param>
         /// <param name="dependencies">The dependencies this mod requires.</param>
-        private IManifest GetManifest(string uniqueID, string version, params IManifestDependency[] dependencies)
+        private IManifest GetManifest(string uniqueID, string version, Action<Manifest> adjust, params IManifestDependency[] dependencies)
         {
             return this.GetManifest(manifest =>
             {
@@ -444,7 +491,17 @@ namespace StardewModdingAPI.Tests.Core
                 manifest.UniqueID = uniqueID;
                 manifest.Version = new SemanticVersion(version);
                 manifest.Dependencies = dependencies;
+                adjust?.Invoke(manifest);
             });
+        }
+
+        /// <summary>Get a randomised basic manifest.</summary>
+        /// <param name="uniqueID">The mod's name and unique ID.</param>
+        /// <param name="version">The mod version.</param>
+        /// <param name="dependencies">The dependencies this mod requires.</param>
+        private IManifest GetManifest(string uniqueID, string version, params IManifestDependency[] dependencies)
+        {
+            return this.GetManifest(uniqueID, version, null, dependencies);
         }
 
         /// <summary>Get a randomised basic manifest.</summary>
@@ -470,6 +527,7 @@ namespace StardewModdingAPI.Tests.Core
         private Mock<IModMetadata> GetMetadata(IManifest manifest, bool allowStatusChange = false)
         {
             Mock<IModMetadata> mod = new Mock<IModMetadata>(MockBehavior.Strict);
+            mod.Setup(p => p.Compatibility).Returns(() => null);
             mod.Setup(p => p.Status).Returns(ModMetadataStatus.Found);
             mod.Setup(p => p.DisplayName).Returns(manifest.UniqueID);
             mod.Setup(p => p.Manifest).Returns(manifest);
@@ -481,6 +539,18 @@ namespace StardewModdingAPI.Tests.Core
                     .Returns(mod.Object);
             }
             return mod;
+        }
+
+        /// <summary>Set up a mock mod metadata for <see cref="ModResolver.ValidateManifests"/>.</summary>
+        /// <param name="mod">The mock mod metadata.</param>
+        /// <param name="compatibility">The compatibility record to set.</param>
+        private void SetupMetadataForValidation(Mock<IModMetadata> mod, ModCompatibility compatibility = null)
+        {
+            mod.Setup(p => p.Status).Returns(ModMetadataStatus.Found);
+            mod.Setup(p => p.Compatibility).Returns(() => null);
+            mod.Setup(p => p.Manifest).Returns(this.GetManifest());
+            mod.Setup(p => p.DirectoryPath).Returns(Path.GetTempPath());
+            mod.Setup(p => p.Compatibility).Returns(compatibility);
         }
     }
 }

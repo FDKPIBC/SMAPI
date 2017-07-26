@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using StardewModdingAPI.Framework;
+using StardewModdingAPI.Framework.ModHelpers;
 using StardewValley;
 
 namespace StardewModdingAPI.Tests.Core
@@ -31,7 +32,7 @@ namespace StardewModdingAPI.Tests.Core
             var data = new Dictionary<string, IDictionary<string, string>>();
 
             // act
-            ITranslationHelper helper = new TranslationHelper("ModName", "en", LocalizedContentManager.LanguageCode.en).SetTranslations(data);
+            ITranslationHelper helper = new TranslationHelper("ModID", "ModName", "en", LocalizedContentManager.LanguageCode.en).SetTranslations(data);
             Translation translation = helper.Get("key");
             Translation[] translationList = helper.GetTranslations()?.ToArray();
 
@@ -54,7 +55,7 @@ namespace StardewModdingAPI.Tests.Core
 
             // act
             var actual = new Dictionary<string, Translation[]>();
-            TranslationHelper helper = new TranslationHelper("ModName", "en", LocalizedContentManager.LanguageCode.en).SetTranslations(data);
+            TranslationHelper helper = new TranslationHelper("ModID", "ModName", "en", LocalizedContentManager.LanguageCode.en).SetTranslations(data);
             foreach (string locale in expected.Keys)
             {
                 this.AssertSetLocale(helper, locale, LocalizedContentManager.LanguageCode.en);
@@ -78,7 +79,7 @@ namespace StardewModdingAPI.Tests.Core
 
             // act
             var actual = new Dictionary<string, Translation[]>();
-            TranslationHelper helper = new TranslationHelper("ModName", "en", LocalizedContentManager.LanguageCode.en).SetTranslations(data);
+            TranslationHelper helper = new TranslationHelper("ModID", "ModName", "en", LocalizedContentManager.LanguageCode.en).SetTranslations(data);
             foreach (string locale in expected.Keys)
             {
                 this.AssertSetLocale(helper, locale, LocalizedContentManager.LanguageCode.en);
